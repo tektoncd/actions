@@ -1,0 +1,74 @@
+---
+name: Tekton Pipeline Setup (CI)
+description: |
+  Installs Tekton Pipelines on the informed Kubernetes KinD instance, includes a local Container
+  Registry and the `tkn` cli.
+branding:
+  color: blue
+  icon: anchor
+inputs:
+  pipeline_version:
+    description: |
+      Tekton Pipeline release version
+    required: false
+    default: v0.45.0
+  feature_flags:
+    description: |
+      JSON payload for the Tekton Pipelines feature-flags, a configmap containing features toggles.
+      For instance '{ "enable-api-fields": "alpha" }'
+    required: false
+    default: '{}'
+  cli_version:
+    description: |
+      Tekton CLI (tkn) version
+    required: false
+    default: latest
+  setup_registry:
+    description: |
+      When enabled, the action deploys a Container Registry instance
+    required: false
+    default: "true"
+  patch_etc_hosts:
+    description: |
+      Patch "/etc/hosts" to alias the Container Registry hostname to "127.0.0.1"
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    # pre-flight checks, making sure the dependencies needed for the upcoming steps are available
+    - shell: bash
+      run: ${{ github.action_path }}/probe.sh
+
+    # deploying the container registry when input flag is set, waiting for the deployment to reach
+    # ready status before proceeding
+    - shell: bash
+      if: ${{ inputs.setup_registry == 'true' }}
+      working-directory: ${{ github.action_path }}
+      env:
+        INPUT_PIPELINE_VERSION: ${{ inputs.pipeline_version }}
+        INPUT_FEATURE_FLAGS: ${{ inputs.feature_flags }}
+        INPUT_CLI_VERSION: ${{ inputs.cli_version }}
+      run: ${{ github.action_path }}/install-registry.sh
+
+    # deploying tekton pipline controller and dependencies, waiting for it to reach ready status
+    - shell: bash
+      env:
+        INPUT_PIPELINE_VERSION: ${{ inputs.pipeline_version }}
+        INPUT_FEATURE_FLAGS: ${{ inputs.feature_flags }}
+        INPUT_CLI_VERSION: ${{ inputs.cli_version }}
+      run: ${{ github.action_path }}/install-pipeline.sh
+
+    # patches the /etc/hosts to include the container registry hostname resolving to 127.0.0.1
+    - shell: bash
+      if: ${{ inputs.patch_etc_hosts == 'true' }}
+      env:
+        INPUT_PIPELINE_VERSION: ${{ inputs.pipeline_version }}
+        INPUT_FEATURE_FLAGS: ${{ inputs.feature_flags }}
+        INPUT_CLI_VERSION: ${{ inputs.cli_version }}
+      run: sudo --preserve-env ${{ github.action_path }}/patch-etc-hosts.sh
+
+    # installs the pre-compiled Tekton CLI
+    - uses: tektoncd/actions/setup-tektoncd-cli@main
+      with:
+        version: ${{ inputs.cli_version }}
