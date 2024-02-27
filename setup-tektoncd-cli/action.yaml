@@ -1,0 +1,25 @@
+---
+name: setup-tektoncd-cli
+description: |
+  Installs the Tekton CLI (tkn)
+branding:
+  color: blue
+  icon: anchor
+inputs:
+  version:
+    description: |
+      Tekton CLI release version
+    default: latest
+    required: false
+runs:
+  using: composite
+  steps:
+    # pre-flight checks, making sure the dependencies are met
+    - shell: bash
+      run: ${{ github.action_path }}/probe.sh
+
+    # installs the pre-compiled Tekton CLI
+    - shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+      run: sudo --preserve-env ${{ github.action_path }}/install-cli.sh
