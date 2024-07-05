@@ -1,0 +1,34 @@
+---
+name: use-action
+
+on:
+  push:
+    tags-ignore:
+      - '**'
+    branches:
+      - '**'
+    paths-ignore:
+      - '*.md'
+  pull_request:
+    branches:
+      - '**'
+    paths-ignore:
+      - '*.md'
+
+jobs:
+  use-action:
+    runs-on: ubuntu-latest
+    steps:
+      # checking out the project code on the current workspace
+      - uses: actions/checkout@v3
+
+      # self loading the action.yaml definitions, making possible to run the action defined on this
+      # project directly
+      - uses: ./setup-tektoncd-cli/
+        with:
+          version: latest
+
+      # assert the changes performed by this action
+      - shell: bash
+        run: |
+          ./assert.sh
