@@ -1,0 +1,45 @@
+---
+name: use-setup-tektoncd-action
+
+permissions:
+  contents: read
+
+on:
+  push:
+    tags-ignore:
+      - '**'
+    branches:
+      - '**'
+    paths-ignore:
+      - '*.md'
+  pull_request:
+    branches:
+      - '**'
+    paths-ignore:
+      - '*.md'
+
+jobs:
+  use-action:
+    runs-on: ubuntu-latest
+    steps:
+      # preparing the Kubernetes cluster# (KinD) and installing kubectl
+      - uses: helm/kind-action@v1.5.0
+        with:
+          cluster_name: kind
+          wait: 120s
+
+      # checking out the project code on the current workspace
+      - uses: actions/checkout@v3
+
+      # self loading the action.yaml definitions, making possible to run the action defined on this
+      # project directly
+      - uses: ./setup-tektoncd/
+        with:
+          pipeline_version: latest
+          feature_flags: '{ "enable-custom-tasks": "true" }'
+          cli_version: latest
+
+      # assert the changes performed by this action
+      - shell: bash
+        run: |
+          ./assert.sh
