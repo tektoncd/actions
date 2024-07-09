@@ -1,5 +1,5 @@
 ---
-name: use-action
+name: use-setup-tektoncd-cli-action
 
 on:
   push:
@@ -31,4 +31,4 @@ jobs:
       # assert the changes performed by this action
       - shell: bash
         run: |
-          ./assert.sh
+          ./setup-tektoncd-cli/assert.sh

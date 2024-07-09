@@ -42,4 +42,4 @@ jobs:
       # assert the changes performed by this action
       - shell: bash
         run: |
-          ./assert.sh
+          ./setup-tektoncd/assert.sh
