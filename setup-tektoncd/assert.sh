@@ -6,7 +6,7 @@
 shopt -s inherit_errexit
 set -eu -o pipefail
 
-source common.sh
+source "$(dirname ${BASH_SOURCE[0]})/common.sh"
 
 phase "Asserting the Container Registry rollout status"
 rollout_status "${REGISTRY_NAMESPACE}" "registry"
