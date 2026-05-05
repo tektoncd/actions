@@ -18,7 +18,14 @@ function _kubectl() {
 readonly url=$(get_release_artifact_url "tektoncd/pipeline" "${INPUT_PIPELINE_VERSION}")
 
 phase "Deploying Tekton Pipelines '${INPUT_PIPELINE_VERSION}'"
-_kubectl apply -f ${url}
+
+# Pipeline releases don't publish a checksums file, so we download first,
+# log the SHA256 for audit trail, then apply.
+readonly tmp_release="/tmp/tekton-pipeline-release.yaml"
+curl -sL "${url}" > "${tmp_release}"
+phase "SHA256 of release.yaml: $(sha256sum "${tmp_release}" | awk '{print $1}')"
+_kubectl apply -f "${tmp_release}"
+rm -f "${tmp_release}"
 
 phase "Waiting for Tekton components"
 
