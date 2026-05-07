@@ -19,11 +19,38 @@ readonly url=$(get_release_artifact_url "tektoncd/pipeline" "${INPUT_PIPELINE_VE
 
 phase "Deploying Tekton Pipelines '${INPUT_PIPELINE_VERSION}'"
 
-# Pipeline releases don't publish a checksums file, so we download first,
-# log the SHA256 for audit trail, then apply.
+# Download release.yaml and verify its SHA256 against GitHub's release digest
 readonly tmp_release="/tmp/tekton-pipeline-release.yaml"
 curl -sL "${url}" > "${tmp_release}"
-phase "SHA256 of release.yaml: $(sha256sum "${tmp_release}" | awk '{print $1}')"
+
+readonly actual_sha256=$(sha256sum "${tmp_release}" | awk '{print $1}')
+phase "SHA256 of release.yaml: ${actual_sha256}"
+
+# Fetch expected digest from GitHub release API
+readonly release_tag=$(
+    if [[ "${INPUT_PIPELINE_VERSION}" == "latest" ]]; then
+        curl -s "https://api.github.com/repos/tektoncd/pipeline/releases/latest" | jq -r '.tag_name'
+    else
+        echo "${INPUT_PIPELINE_VERSION}"
+    fi
+)
+if command -v gh &>/dev/null; then
+    expected_digest=$(gh release view "${release_tag}" --repo tektoncd/pipeline \
+        --json assets --jq '.assets[] | select(.name == "release.yaml") | .digest' 2>/dev/null || true)
+    if [[ -n "${expected_digest}" ]]; then
+        expected_sha256="${expected_digest#sha256:}"
+        if [[ "${actual_sha256}" == "${expected_sha256}" ]]; then
+            phase "Checksum verification passed"
+        else
+            fail "Checksum mismatch! Expected ${expected_sha256}, got ${actual_sha256}"
+        fi
+    else
+        phase "WARNING: Could not fetch expected digest, skipping verification"
+    fi
+else
+    phase "WARNING: gh CLI not available, skipping checksum verification"
+fi
+
 _kubectl apply -f "${tmp_release}"
 rm -f "${tmp_release}"
 
