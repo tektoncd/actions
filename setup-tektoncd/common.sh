@@ -49,25 +49,67 @@ function probe_bin_on_path() {
     fi
 }
 
-# get the artifact url for the specific version (release) or latest.
+# get the release artifact URL from infra.tekton.dev for the given component and version.
 function get_release_artifact_url() {
-    local _org_repo="${1}"
+    local _component="${1}"
     local _version="${2}"
 
-    local _url="https://api.github.com/repos/${_org_repo}/releases"
+    local _base="https://infra.tekton.dev/tekton-releases/${_component}"
+    local _url
     if [[ "${_version}" == "latest" ]]; then
-        echo $(
-            curl -s ${_url}/latest |
-                jq -r '.assets[].browser_download_url' |
-                egrep -i 'release.yaml' |
-                head -n 1
-        )
+        _url="${_base}/latest/release.yaml"
     else
-        echo $(
-            curl -s ${_url}/tags/${_version} |
-                jq -r ".assets[].browser_download_url" |
-                egrep -i 'release.yaml' |
-                head -n 1
-        )
+        _url="${_base}/previous/${_version}/release.yaml"
+    fi
+
+    # verify the URL is reachable
+    if ! curl -sIL -o /dev/null -w '%{http_code}' "${_url}" | grep -q '^2'; then
+        fail "Release artifact not found at ${_url}"
+    fi
+
+    echo "${_url}"
+}
+
+# verify the SHA256 checksum of a downloaded file against GitHub's release digest.
+# requires gh CLI and GITHUB_TOKEN for authenticated requests.
+function verify_checksum() {
+    local _file="${1}"
+    local _repo="${2}"
+    local _version="${3}"
+    local _asset_name="${4}"
+
+    local _actual_sha256
+    _actual_sha256=$(sha256sum "${_file}" | awk '{print $1}')
+    phase "SHA256 of ${_asset_name}: ${_actual_sha256}"
+
+    if ! command -v gh &>/dev/null; then
+        phase "WARNING: gh CLI not available, skipping checksum verification"
+        return 0
+    fi
+
+    # resolve "latest" to actual tag
+    local _tag="${_version}"
+    if [[ "${_version}" == "latest" ]]; then
+        _tag=$(gh release view --repo "${_repo}" --json tagName --jq '.tagName' 2>/dev/null || true)
+        if [[ -z "${_tag}" ]]; then
+            phase "WARNING: Could not resolve latest version, skipping checksum verification"
+            return 0
+        fi
+    fi
+
+    local _expected_digest
+    _expected_digest=$(gh release view "${_tag}" --repo "${_repo}" \
+        --json assets --jq ".assets[] | select(.name == \"${_asset_name}\") | .digest" 2>/dev/null || true)
+
+    if [[ -z "${_expected_digest}" ]]; then
+        phase "WARNING: Could not fetch expected digest from GitHub, skipping verification"
+        return 0
+    fi
+
+    local _expected_sha256="${_expected_digest#sha256:}"
+    if [[ "${_actual_sha256}" == "${_expected_sha256}" ]]; then
+        phase "Checksum verification passed (cross-verified against GitHub release digest)"
+    else
+        fail "Checksum mismatch! Expected ${_expected_sha256} (from GitHub), got ${_actual_sha256} (from infra.tekton.dev)"
     fi
 }
