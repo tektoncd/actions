@@ -33,6 +33,12 @@ inputs:
       Patch "/etc/hosts" to alias the Container Registry hostname to "127.0.0.1"
     required: false
     default: "true"
+  github_token:
+    description: |
+      GitHub token used for checksum verification against GitHub release digests
+      and for CLI release artifact discovery. Defaults to the built-in GITHUB_TOKEN.
+    required: false
+    default: ${{ github.token }}
 runs:
   using: composite
   steps:
@@ -57,6 +63,7 @@ runs:
         INPUT_PIPELINE_VERSION: ${{ inputs.pipeline_version }}
         INPUT_FEATURE_FLAGS: ${{ inputs.feature_flags }}
         INPUT_CLI_VERSION: ${{ inputs.cli_version }}
+        GITHUB_TOKEN: ${{ inputs.github_token }}
       run: ${{ github.action_path }}/install-pipeline.sh
 
     # patches the /etc/hosts to include the container registry hostname resolving to 127.0.0.1
@@ -78,3 +85,4 @@ runs:
     - uses: ./.github/_actions/setup-tektoncd-cli
       with:
         version: ${{ inputs.cli_version }}
+        github_token: ${{ inputs.github_token }}

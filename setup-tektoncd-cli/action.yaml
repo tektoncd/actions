@@ -11,6 +11,12 @@ inputs:
       Tekton CLI release version
     default: latest
     required: false
+  github_token:
+    description: |
+      GitHub token for API requests. Prevents rate-limiting when fetching release
+      information. Defaults to the built-in GITHUB_TOKEN.
+    required: false
+    default: ${{ github.token }}
 runs:
   using: composite
   steps:
@@ -22,4 +28,5 @@ runs:
     - shell: bash
       env:
         INPUT_VERSION: ${{ inputs.version }}
+        GITHUB_TOKEN: ${{ inputs.github_token }}
       run: sudo --preserve-env ${{ github.action_path }}/install-cli.sh

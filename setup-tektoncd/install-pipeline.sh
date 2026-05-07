@@ -15,10 +15,16 @@ function _kubectl() {
 	set +x
 }
 
-readonly url=$(get_release_artifact_url "tektoncd/pipeline" "${INPUT_PIPELINE_VERSION}")
+readonly url=$(get_release_artifact_url "pipeline" "${INPUT_PIPELINE_VERSION}")
 
 phase "Deploying Tekton Pipelines '${INPUT_PIPELINE_VERSION}'"
-_kubectl apply -f ${url}
+
+# Download release.yaml, verify checksum against GitHub's digest, then apply
+readonly tmp_release="/tmp/tekton-pipeline-release.yaml"
+curl -sL "${url}" > "${tmp_release}"
+verify_checksum "${tmp_release}" "tektoncd/pipeline" "${INPUT_PIPELINE_VERSION}" "release.yaml"
+_kubectl apply -f "${tmp_release}"
+rm -f "${tmp_release}"
 
 phase "Waiting for Tekton components"
 

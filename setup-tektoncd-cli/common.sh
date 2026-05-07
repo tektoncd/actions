@@ -22,27 +22,61 @@ function probe_bin_on_path() {
     fi
 }
 
+# helper to build curl auth headers when GITHUB_TOKEN is available.
+function _gh_curl() {
+    local _curl_args=(-s -f)
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        _curl_args+=(-H "Authorization: token ${GITHUB_TOKEN}")
+    fi
+    local _response
+    if ! _response=$(curl "${_curl_args[@]}" "$@" 2>&1); then
+        fail "GitHub API request failed for '$*'. Response: ${_response}. If this is a rate-limit error, set the 'github_token' input."
+    fi
+    echo "${_response}"
+}
+
 # get the artifact url for the specific version (release) or latest.
 function get_release_artifact_url() {
     local _org_repo="${1}"
     local _version="${2}"
 
     local _url="https://api.github.com/repos/${_org_repo}/releases"
+    local _response
     if [[ "${_version}" == "latest" ]]; then
-        echo $(
-            curl -s ${_url}/latest |
+        _response=$(_gh_curl "${_url}/latest")
+    else
+        _response=$(_gh_curl "${_url}")
+    fi
+
+    # check for API error messages
+    if echo "${_response}" | jq -e '.message' &>/dev/null; then
+        local _msg
+        _msg=$(echo "${_response}" | jq -r '.message')
+        fail "GitHub API error: ${_msg}. If this is a rate-limit error, set the 'github_token' input."
+    fi
+
+    local _artifact_url
+    if [[ "${_version}" == "latest" ]]; then
+        _artifact_url=$(
+            echo "${_response}" |
                 jq -r '.assets[].browser_download_url' |
                 egrep -i 'linux_(x86_64|amd64)' |
                 head -n 1
         )
     else
-        echo $(
-            curl -s ${_url} |
+        _artifact_url=$(
+            echo "${_response}" |
                 jq -r ".[] | select(.tag_name == \"${_version}\") | .assets[].browser_download_url" |
                 egrep -i 'linux_(x86_64|amd64)' |
                 head -n 1
         )
     fi
+
+    if [[ -z "${_artifact_url}" ]]; then
+        fail "Could not find release artifact for ${_org_repo} version '${_version}'"
+    fi
+
+    echo "${_artifact_url}"
 }
 
 # given the download url and excutable name, download and extract the executable from the artifact
