@@ -64,8 +64,8 @@ function get_release_artifact_url() {
         )
     else
         echo $(
-            curl -s ${_url} |
-                jq -r ".[] | select(.tag_name == \"${_version}\") | .assets[].browser_download_url" |
+            curl -s ${_url}/tags/${_version} |
+                jq -r ".assets[].browser_download_url" |
                 egrep -i 'release.yaml' |
                 head -n 1
         )
