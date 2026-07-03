@@ -28,7 +28,7 @@ jobs:
           cluster_name: kind
           wait: 120s
       # checking out the project code on the current workspace
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       # self loading the action.yaml definitions, making possible to run the action defined on this
       # project directly
       - uses: ./setup-tektoncd/
