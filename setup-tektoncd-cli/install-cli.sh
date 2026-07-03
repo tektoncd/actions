@@ -17,16 +17,16 @@ readonly INPUT_VERSION="${INPUT_VERSION:-}"
 
 phase "Searching for '${INPUT_VERSION}' release artifact"
 
-readonly url=$(get_release_artifact_url "tektoncd/cli" ${INPUT_VERSION})
+readonly url=$(get_release_artifact_url "tektoncd/cli" "${INPUT_VERSION}")
 
 [[ -z "${url}" ]] &&
     fail "Unable to acrquire the release artifact download URL"
 
 phase "Searching for checksums"
-readonly checksums_url=$(get_checksums_url "tektoncd/cli" ${INPUT_VERSION})
+readonly checksums_url=$(get_checksums_url "tektoncd/cli" "${INPUT_VERSION}")
 
 [[ -z "${checksums_url}" ]] &&
     fail "Unable to acquire the checksums URL for verification"
 
 phase "Download URL '${url}'"
-download_and_install ${url} "tkn" ${checksums_url}
+download_and_install "${url}" "tkn" "${checksums_url}"
