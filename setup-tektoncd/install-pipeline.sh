@@ -20,11 +20,13 @@ readonly url=$(get_release_artifact_url "pipeline" "${INPUT_PIPELINE_VERSION}")
 phase "Deploying Tekton Pipelines '${INPUT_PIPELINE_VERSION}'"
 
 # Download release.yaml, verify checksum against GitHub's digest, then apply
-readonly tmp_release="/tmp/tekton-pipeline-release.yaml"
-curl -sL "${url}" > "${tmp_release}"
+tmp_release="$(mktemp)"
+trap 'rm -f "${tmp_release}"' EXIT
+if ! curl -fsSL "${url}" > "${tmp_release}"; then
+    fail "Failed to download release manifest from '${url}'"
+fi
 verify_checksum "${tmp_release}" "tektoncd/pipeline" "${INPUT_PIPELINE_VERSION}" "release.yaml"
 _kubectl apply -f "${tmp_release}"
-rm -f "${tmp_release}"
 
 phase "Waiting for Tekton components"
 

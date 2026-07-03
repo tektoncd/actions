@@ -70,6 +70,19 @@ function get_release_artifact_url() {
     echo "${_url}"
 }
 
+# compute the sha256 checksum of a file, using sha256sum or shasum -a 256.
+# returns non-zero if no SHA256 tool is available.
+function _sha256() {
+    local _file="${1}"
+    if command -v sha256sum &>/dev/null; then
+        sha256sum "${_file}" | awk '{print $1}'
+    elif command -v shasum &>/dev/null; then
+        shasum -a 256 "${_file}" | awk '{print $1}'
+    else
+        return 1
+    fi
+}
+
 # verify the SHA256 checksum of a downloaded file against GitHub's release digest.
 # requires gh CLI and GITHUB_TOKEN for authenticated requests.
 function verify_checksum() {
@@ -79,7 +92,10 @@ function verify_checksum() {
     local _asset_name="${4}"
 
     local _actual_sha256
-    _actual_sha256=$(sha256sum "${_file}" | awk '{print $1}')
+    if ! _actual_sha256=$(_sha256 "${_file}"); then
+        phase "WARNING: no SHA256 tool (sha256sum/shasum) available, skipping checksum verification"
+        return 0
+    fi
     phase "SHA256 of ${_asset_name}: ${_actual_sha256}"
 
     if ! command -v gh &>/dev/null; then
@@ -92,8 +108,7 @@ function verify_checksum() {
     if [[ "${_version}" == "latest" ]]; then
         _tag=$(gh release view --repo "${_repo}" --json tagName --jq '.tagName' 2>/dev/null || true)
         if [[ -z "${_tag}" ]]; then
-            phase "WARNING: Could not resolve latest version, skipping checksum verification"
-            return 0
+            fail "gh is available but could not resolve the latest release tag for ${_repo}"
         fi
     fi
 
@@ -102,8 +117,7 @@ function verify_checksum() {
         --json assets --jq ".assets[] | select(.name == \"${_asset_name}\") | .digest" 2>/dev/null || true)
 
     if [[ -z "${_expected_digest}" ]]; then
-        phase "WARNING: Could not fetch expected digest from GitHub, skipping verification"
-        return 0
+        fail "gh is available but could not fetch the expected digest for '${_asset_name}' from ${_repo} ${_tag}"
     fi
 
     local _expected_sha256="${_expected_digest#sha256:}"
