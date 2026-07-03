@@ -43,9 +43,13 @@ function _gh_curl() {
     if [[ -n "${GITHUB_TOKEN:-}" ]]; then
         _curl_args+=(-H "Authorization: token ${GITHUB_TOKEN}")
     fi
+    local _stderr
+    _stderr="$(mktemp)"
+    # shellcheck disable=SC2064
+    trap "rm -f '${_stderr}'" RETURN
     local _response
-    if ! _response=$(curl "${_curl_args[@]}" "$@" 2>&1); then
-        fail "GitHub API request failed for '$*'. Response: ${_response}. If this is a rate-limit error, set the 'github_token' input."
+    if ! _response=$(curl "${_curl_args[@]}" "$@" 2>"${_stderr}"); then
+        fail "GitHub API request failed for '$*'. Response: $(cat "${_stderr}"). If this is a rate-limit error, set the 'github_token' input."
     fi
     local _http_code="${_response##*$'\n'}"
     local _body="${_response%$'\n'*}"
