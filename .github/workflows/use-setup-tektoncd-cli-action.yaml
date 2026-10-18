@@ -24,7 +24,7 @@ jobs:
 
       # self loading the action.yaml definitions, making possible to run the action defined on this
       # project directly
-      - uses: ./setup-tektoncd-cli/
+      - uses: $/setup-tektoncd-cli/
         with:
           version: latest
 
