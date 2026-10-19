@@ -75,14 +75,8 @@ runs:
         INPUT_CLI_VERSION: ${{ inputs.cli_version }}
       run: sudo --preserve-env ${{ github.action_path }}/patch-etc-hosts.sh
 
-    # copy setup-tektoncd-cli to a location 
-    - shell: bash
-      run: |
-        mkdir -p .github/_actions
-        cp -r ${{ github.action_path }}/../setup-tektoncd-cli .github/_actions/
-
     # installs the pre-compiled Tekton CLI
-    - uses: ./.github/_actions/setup-tektoncd-cli
+    - uses: $/setup-tektoncd-cli
       with:
         version: ${{ inputs.cli_version }}
         github_token: ${{ inputs.github_token }}

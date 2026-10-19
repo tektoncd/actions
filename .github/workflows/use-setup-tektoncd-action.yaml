@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # self loading the action.yaml definitions, making possible to run the action defined on this
       # project directly
-      - uses: ./setup-tektoncd/
+      - uses: $/setup-tektoncd/
         with:
           pipeline_version: latest
           feature_flags: '{ "enable-custom-tasks": "true" }'
