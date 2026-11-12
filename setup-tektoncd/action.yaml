@@ -73,7 +73,7 @@ runs:
         INPUT_PIPELINE_VERSION: ${{ inputs.pipeline_version }}
         INPUT_FEATURE_FLAGS: ${{ inputs.feature_flags }}
         INPUT_CLI_VERSION: ${{ inputs.cli_version }}
-      run: sudo --preserve-env ${{ github.action_path }}/patch-etc-hosts.sh
+      run: sudo --preserve-env=INPUT_PIPELINE_VERSION,INPUT_FEATURE_FLAGS,INPUT_CLI_VERSION ${{ github.action_path }}/patch-etc-hosts.sh
 
     # copy setup-tektoncd-cli to a location 
     - shell: bash
