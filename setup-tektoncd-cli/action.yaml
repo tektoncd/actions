@@ -13,8 +13,8 @@ inputs:
     required: false
   github_token:
     description: |
-      GitHub token for API requests. Prevents rate-limiting when fetching release
-      information. Defaults to the built-in GITHUB_TOKEN.
+      GitHub token for API requests. Prevents rate-limiting when fetching
+      release information. Defaults to the built-in GITHUB_TOKEN.
     required: false
     default: ${{ github.token }}
 runs:
@@ -29,4 +29,6 @@ runs:
       env:
         INPUT_VERSION: ${{ inputs.version }}
         GITHUB_TOKEN: ${{ inputs.github_token }}
-      run: sudo --preserve-env ${{ github.action_path }}/install-cli.sh
+      run: |
+        sudo --preserve-env=INPUT_VERSION,GITHUB_TOKEN \
+          ${{ github.action_path }}/install-cli.sh
